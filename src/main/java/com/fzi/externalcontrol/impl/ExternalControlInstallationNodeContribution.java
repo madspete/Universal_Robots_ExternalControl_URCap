@@ -38,6 +38,7 @@ public class ExternalControlInstallationNodeContribution implements Installation
   private static final String PORT_NR = "port_nr";
   private static final String NAME = "name";
   private String urScriptProgram = "";
+  private String urScriptWithoutFunctions = "";
   private static final String DEFAULT_IP = "192.168.56.1";
   private static final String DEFAULT_PORT = "50002";
   private static final String DEFAULT_NAME = DEFAULT_IP;
@@ -169,10 +170,42 @@ public class ExternalControlInstallationNodeContribution implements Installation
   }
 
   public String getUrScriptProgram() {
-	if (urScriptProgram == "") {
-	  RequestProgram sender = new RequestProgram(getHostIP(), getCustomPort());
-	  urScriptProgram = sender.sendCommand("request_program\n");
-	}
-    return urScriptProgram;
+    if (urScriptProgram == "") {
+      RequestProgram sender = new RequestProgram(getHostIP(), getCustomPort());
+      urScriptProgram = sender.sendCommand("request_program\n");
+      return urScriptProgram;
+    }
+    else if(urScriptWithoutFunctions == "") {
+      // The functions and global variables, should only be declared once in the program
+      urScriptWithoutFunctions = getScriptWithoutFunctions(urScriptProgram);
+      return urScriptWithoutFunctions;
+    }
+    else {
+      return urScriptWithoutFunctions;
+    }
+  }
+
+  public String getScriptWithoutFunctions(String script) {
+    String result = "";
+    Integer it = 0;
+    Boolean start_found = false;
+
+    String[] splitData = script.split("\n");
+    while(it < splitData.length) {
+      // Find the first line of code after all the functions in ros_control.urscript
+      if(splitData[it].startsWith(" socket_open(")) { // (Make configurable ??)
+        start_found = true;
+        break;
+      }
+      it += 1;
+    }
+    if(start_found == true) {
+      for(int i = it; i < splitData.length; ++i) {
+        result += splitData[i] + "\n";
+      }
+      return result;
+    }
+    // Return the whole script, if we fail to find the first line of code after the functions
+    return script;
   }
 }
